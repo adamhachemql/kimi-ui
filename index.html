@@ -2,767 +2,278 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Kimi K2.6 — Agent Swarm</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap');
-
-  :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface2: #1a1a26;
-    --border: #2a2a3a;
-    --text: #e4e4ef;
-    --text-dim: #8888a0;
-    --accent: #6c5ce7;
-    --accent-glow: rgba(108, 92, 231, 0.3);
-    --green: #00cec9;
-    --orange: #e17055;
-    --pink: #fd79a8;
-    --radius: 12px;
+  :root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--surface3:#0e0e16;--border:#2a2a3a;--text:#e4e4ef;--text-dim:#8888a0;--accent:#6c5ce7;--accent-glow:rgba(108,92,231,0.3);--green:#00cec9;--orange:#e17055;--red:#ff6b6b;--radius:12px;--sidebar-w:280px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;overflow:hidden}
+  .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--surface3);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:transform .3s;z-index:50}
+  .sidebar-header{padding:16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+  .sidebar-brand{font-size:17px;font-weight:700;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
+  .sidebar-brand span{color:var(--accent)}
+  .new-chat-btn{width:100%;padding:10px;border-radius:10px;background:var(--accent);border:none;color:white;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .new-chat-btn:hover{background:#7c6df7;box-shadow:0 0 20px var(--accent-glow)}
+  .sidebar-search{padding:8px 16px}
+  .sidebar-search input{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;outline:none}
+  .sidebar-search input:focus{border-color:var(--accent)}
+  .sidebar-search input::placeholder{color:var(--text-dim)}
+  .chat-list{flex:1;overflow-y:auto;padding:6px 10px}
+  .chat-list::-webkit-scrollbar{width:4px}
+  .chat-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .chat-list-group{margin-bottom:12px}
+  .chat-list-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);padding:4px 8px}
+  .chat-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .15s;margin:1px 0}
+  .chat-item:hover{background:var(--surface2)}
+  .chat-item.active{background:var(--accent);color:white}
+  .chat-item.active .chat-item-date{color:rgba(255,255,255,.6)}
+  .chat-item-icon{font-size:14px;flex-shrink:0}
+  .chat-item-content{flex:1;min-width:0}
+  .chat-item-title{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-item-date{font-size:10px;color:var(--text-dim)}
+  .chat-item-delete{opacity:0;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;transition:all .15s;flex-shrink:0}
+  .chat-item:hover .chat-item-delete{opacity:1}
+  .chat-item-delete:hover{color:var(--red)}
+  .chat-item.active .chat-item-delete{opacity:1;color:rgba(255,255,255,.6)}
+  .chat-item.active .chat-item-delete:hover{color:white}
+  .sidebar-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:6px}
+  .sidebar-footer-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:inherit;font-size:11px;cursor:pointer;transition:all .2s}
+  .sidebar-footer-btn:hover{border-color:var(--accent);color:var(--text)}
+  .sidebar-footer-btn.danger:hover{border-color:var(--red);color:var(--red)}
+  .sidebar-toggle{display:none;position:fixed;top:12px;left:12px;z-index:60;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:16px}
+  @media(max-width:700px){
+    .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
+    .sidebar.open{transform:translateX(0)}
+    .sidebar-toggle{display:block}
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:45}
+    .sidebar-overlay.open{display:block}
   }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Outfit', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* Header */
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .logo {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
-
-  .logo span { color: var(--accent); }
-
-  .badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: var(--accent-glow);
-    color: var(--accent);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-
-  .settings-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    padding: 8px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 13px;
-    transition: all 0.2s;
-  }
-
-  .settings-btn:hover {
-    border-color: var(--accent);
-    color: var(--text);
-  }
-
-  /* Mode selector */
-  .mode-bar {
-    display: flex;
-    gap: 6px;
-    padding: 12px 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
-  }
-
-  .mode-btn {
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .mode-btn:hover {
-    border-color: var(--text-dim);
-    color: var(--text);
-  }
-
-  .mode-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-    box-shadow: 0 0 20px var(--accent-glow);
-  }
-
-  .mode-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-  }
-
-  .mode-btn.active .mode-dot { background: white; }
-
-  .mode-desc {
-    font-size: 11px;
-    color: var(--text-dim);
-    padding: 4px 24px 8px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  /* Chat area */
-  .chat-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    scroll-behavior: smooth;
-  }
-
-  .chat-area::-webkit-scrollbar { width: 6px; }
-  .chat-area::-webkit-scrollbar-track { background: transparent; }
-  .chat-area::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
-  }
-
-  .message {
-    max-width: 80%;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .message.user {
-    align-self: flex-end;
-  }
-
-  .message.assistant {
-    align-self: flex-start;
-  }
-
-  .message-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 6px;
-    color: var(--text-dim);
-  }
-
-  .message.user .message-label { text-align: right; color: var(--accent); }
-  .message.assistant .message-label { color: var(--green); }
-
-  .message-body {
-    padding: 14px 18px;
-    border-radius: var(--radius);
-    line-height: 1.6;
-    font-size: 14.5px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-  }
-
-  .message.user .message-body {
-    background: var(--accent);
-    color: white;
-    border-bottom-right-radius: 4px;
-  }
-
-  .message.assistant .message-body {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-bottom-left-radius: 4px;
-  }
-
-  .message-body code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    background: rgba(0,0,0,0.3);
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-
-  .message-body pre {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    background: rgba(0,0,0,0.4);
-    padding: 12px;
-    border-radius: 8px;
-    margin: 8px 0;
-    overflow-x: auto;
-  }
-
-  .reasoning {
-    margin-bottom: 10px;
-    padding: 10px 14px;
-    background: rgba(108, 92, 231, 0.08);
-    border-left: 3px solid var(--accent);
-    border-radius: 0 8px 8px 0;
-    font-size: 12.5px;
-    color: var(--text-dim);
-    line-height: 1.5;
-    white-space: pre-wrap;
-  }
-
-  .reasoning-toggle {
-    font-size: 11px;
-    color: var(--accent);
-    cursor: pointer;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
-  }
-
-  .reasoning.collapsed {
-    max-height: 0;
-    padding: 0 14px;
-    overflow: hidden;
-    margin-bottom: 0;
-  }
-
-  /* Typing indicator */
-  .typing {
-    display: flex;
-    gap: 4px;
-    padding: 14px 18px;
-    align-items: center;
-  }
-
-  .typing-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--text-dim);
-    animation: bounce 1.2s infinite;
-  }
-
-  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes bounce {
-    0%, 60%, 100% { transform: translateY(0); }
-    30% { transform: translateY(-6px); }
-  }
-
-  /* Input area */
-  .input-area {
-    padding: 16px 24px 20px;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
-  }
-
-  .input-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-  }
-
-  .input-wrapper {
-    flex: 1;
-    position: relative;
-  }
-
-  textarea {
-    width: 100%;
-    padding: 14px 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'Outfit', sans-serif;
-    font-size: 14.5px;
-    line-height: 1.5;
-    resize: none;
-    outline: none;
-    min-height: 52px;
-    max-height: 200px;
-    transition: border-color 0.2s;
-  }
-
-  textarea:focus { border-color: var(--accent); }
-
-  textarea::placeholder { color: var(--text-dim); }
-
-  .send-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: var(--radius);
-    background: var(--accent);
-    border: none;
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .send-btn:hover {
-    background: #7c6df7;
-    box-shadow: 0 0 24px var(--accent-glow);
-  }
-
-  .send-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .token-info {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 8px;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  /* Settings modal */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(4px);
-    z-index: 100;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px;
-    width: 420px;
-    max-width: 90vw;
-  }
-
-  .modal h2 {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 20px;
-  }
-
-  .field {
-    margin-bottom: 16px;
-  }
-
-  .field label {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-dim);
-    display: block;
-    margin-bottom: 6px;
-  }
-
-  .field input, .field select {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    outline: none;
-  }
-
-  .field input:focus, .field select:focus {
-    border-color: var(--accent);
-  }
-
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 24px;
-  }
-
-  .btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    transition: all 0.2s;
-  }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--text-dim);
-  }
-
-  .btn-ghost:hover { color: var(--text); }
-
-  .btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-  }
-
-  .btn-primary:hover { background: #7c6df7; }
-
-  /* Empty state */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    color: var(--text-dim);
-    gap: 12px;
-    padding: 40px;
-    text-align: center;
-  }
-
-  .empty-state .big { font-size: 48px; margin-bottom: 8px; }
-  .empty-state h3 { font-size: 18px; color: var(--text); font-weight: 500; }
-  .empty-state p { font-size: 13px; max-width: 400px; line-height: 1.6; }
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+  .header-left{display:flex;align-items:center;gap:10px}
+  .mode-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;letter-spacing:.3px}
+  .mode-badge.instant{background:rgba(0,206,201,.15);color:var(--green)}
+  .mode-badge.thinking{background:rgba(108,92,231,.15);color:var(--accent)}
+  .mode-badge.agent{background:rgba(225,112,85,.15);color:var(--orange)}
+  .mode-badge.agent_swarm{background:rgba(253,121,168,.15);color:#fd79a8}
+  .icon-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);padding:7px 11px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .2s}
+  .icon-btn:hover{border-color:var(--accent);color:var(--text)}
+  .mode-bar{display:flex;gap:4px;padding:8px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;overflow-x:auto;flex-wrap:wrap}
+  .mode-btn{font-family:inherit;font-size:12px;font-weight:500;padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all .2s;white-space:nowrap}
+  .mode-btn:hover{border-color:var(--text-dim);color:var(--text)}
+  .mode-btn.active{background:var(--accent);border-color:var(--accent);color:white;box-shadow:0 0 16px var(--accent-glow)}
+  .status-bar{padding:0;max-height:0;overflow:hidden;background:var(--surface);border-bottom:1px solid transparent;transition:all .3s;flex-shrink:0}
+  .status-bar.visible{padding:7px 20px;max-height:50px;border-bottom-color:var(--border)}
+  .status-inner{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--green)}
+  .spinner{width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .status-text{animation:pulse 1.5s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .chat-area{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
+  .chat-area::-webkit-scrollbar{width:5px}
+  .chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .message{max-width:85%;animation:fadeIn .25s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  .message.user{align-self:flex-end}
+  .message.assistant{align-self:flex-start}
+  .msg-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;color:var(--text-dim)}
+  .message.user .msg-label{text-align:right;color:var(--accent)}
+  .message.assistant .msg-label{color:var(--green)}
+  .msg-body{padding:11px 15px;border-radius:var(--radius);line-height:1.6;font-size:13.5px;white-space:pre-wrap;word-wrap:break-word}
+  .message.user .msg-body{background:var(--accent);color:white;border-bottom-right-radius:4px}
+  .message.assistant .msg-body{background:var(--surface2);border:1px solid var(--border);border-bottom-left-radius:4px}
+  .msg-body code{font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px}
+  .code-block{position:relative;margin:8px 0;border-radius:10px;background:#0d0d14;border:1px solid var(--border);overflow:hidden}
+  .code-header{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border)}
+  .code-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);font-weight:600}
+  .code-actions{display:flex;gap:3px}
+  .code-action-btn{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all .2s}
+  .code-action-btn:hover{border-color:var(--green);color:var(--green)}
+  .code-action-btn.ok{border-color:var(--green);color:var(--green)}
+  .code-block pre{font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px;margin:0;overflow-x:auto;line-height:1.5;color:var(--text)}
+  .reasoning-box{margin-bottom:6px;border-radius:8px;overflow:hidden;border:1px solid rgba(108,92,231,.15)}
+  .reasoning-toggle{display:flex;align-items:center;gap:5px;padding:7px 10px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;background:rgba(108,92,231,.05);transition:background .2s}
+  .reasoning-toggle:hover{background:rgba(108,92,231,.1)}
+  .reasoning-content{max-height:0;overflow:hidden;transition:max-height .3s;font-size:12px;color:var(--text-dim);line-height:1.5;white-space:pre-wrap;background:rgba(108,92,231,.02)}
+  .reasoning-content.open{max-height:5000px}
+  .reasoning-content-inner{padding:8px 10px}
+  .input-area{padding:10px 20px 14px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+  .input-row{display:flex;gap:8px;align-items:flex-end}
+  textarea{flex:1;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;line-height:1.5;resize:none;outline:none;min-height:46px;max-height:160px;transition:border-color .2s}
+  textarea:focus{border-color:var(--accent)}
+  textarea::placeholder{color:var(--text-dim)}
+  .send-btn{width:46px;height:46px;border-radius:var(--radius);background:var(--accent);border:none;color:white;font-size:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .send-btn:hover{background:#7c6df7;box-shadow:0 0 20px var(--accent-glow)}
+  .send-btn:disabled{opacity:.4;cursor:not-allowed}
+  .token-info{font-size:10px;color:var(--text-dim);margin-top:5px;display:flex;justify-content:space-between}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;justify-content:center;align-items:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:380px;max-width:90vw}
+  .modal h2{font-size:15px;font-weight:600;margin-bottom:14px}
+  .field{margin-bottom:12px}
+  .field label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);display:block;margin-bottom:4px}
+  .field input{width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none}
+  .field input:focus{border-color:var(--accent)}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+  .btn{padding:8px 16px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);transition:all .2s}
+  .btn-ghost{background:transparent;color:var(--text-dim)}
+  .btn-ghost:hover{color:var(--text)}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:white}
+  .btn-primary:hover{background:#7c6df7}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--text-dim);gap:8px;padding:40px;text-align:center}
+  .empty-state .big{font-size:40px}
+  .empty-state h3{font-size:15px;color:var(--text);font-weight:500}
+  .empty-state p{font-size:12px;max-width:340px;line-height:1.6}
+  @media(max-width:700px){.message{max-width:95%}.header{padding:10px 14px;padding-left:50px}.mode-bar{padding:6px 14px}.chat-area{padding:14px}.input-area{padding:8px 14px 12px}}
 </style>
 </head>
 <body>
-
-<div class="header">
-  <div class="header-left">
-    <div class="logo">Kimi <span>K2.6</span></div>
-    <div class="badge">Pay-per-use</div>
+<button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">🐝 Kimi <span>K2.6</span></div>
+    <button class="new-chat-btn" onclick="newChat()">+ Nouveau chat</button>
   </div>
-  <button class="settings-btn" onclick="openSettings()">⚙ Clé API</button>
-</div>
-
-<div class="mode-bar">
-  <button class="mode-btn active" data-mode="instant" onclick="setMode('instant')">
-    <span class="mode-dot"></span> Instant
-  </button>
-  <button class="mode-btn" data-mode="thinking" onclick="setMode('thinking')">
-    <span class="mode-dot"></span> Thinking
-  </button>
-  <button class="mode-btn" data-mode="agent" onclick="setMode('agent')">
-    <span class="mode-dot"></span> Agent
-  </button>
-  <button class="mode-btn" data-mode="agent_swarm" onclick="setMode('agent_swarm')">
-    <span class="mode-dot"></span> Agent Swarm
-  </button>
-</div>
-
-<div class="mode-desc" id="modeDesc">Réponses rapides — idéal pour les questions simples et le chat.</div>
-
-<div class="chat-area" id="chatArea">
-  <div class="empty-state" id="emptyState">
-    <div class="big">🐝</div>
-    <h3>Kimi K2.6 — Agent Swarm</h3>
-    <p>Choisis un mode en haut et envoie ton premier message. En mode <strong>Agent Swarm</strong>, Kimi décompose ta tâche en sous-agents parallèles.</p>
+  <div class="sidebar-search"><input type="text" placeholder="Rechercher..." oninput="filterChats(this.value)" /></div>
+  <div class="chat-list" id="chatList"></div>
+  <div class="sidebar-footer">
+    <button class="sidebar-footer-btn" onclick="exportChats()">📥 Export</button>
+    <button class="sidebar-footer-btn" onclick="importChats()">📤 Import</button>
+    <button class="sidebar-footer-btn danger" onclick="deleteAllChats()">🗑 Tout</button>
   </div>
-</div>
-
-<div class="input-area">
-  <div class="input-row">
-    <div class="input-wrapper">
-      <textarea id="userInput" placeholder="Écris ton message ici..." rows="1"
-        oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+</aside>
+<div class="main">
+  <div class="header">
+    <div class="header-left"><span class="mode-badge instant" id="modeBadge">⚡ Instant</span></div>
+    <button class="icon-btn" onclick="openSettings()">⚙</button>
+  </div>
+  <div class="mode-bar">
+    <button class="mode-btn active" data-mode="instant" onclick="setMode('instant')">⚡ Instant</button>
+    <button class="mode-btn" data-mode="thinking" onclick="setMode('thinking')">🧠 Thinking</button>
+    <button class="mode-btn" data-mode="agent" onclick="setMode('agent')">🔧 Agent</button>
+    <button class="mode-btn" data-mode="agent_swarm" onclick="setMode('agent_swarm')">🐝 Swarm</button>
+  </div>
+  <div class="status-bar" id="statusBar"><div class="status-inner"><div class="spinner"></div><span class="status-text" id="statusText"></span></div></div>
+  <div class="chat-area" id="chatArea">
+    <div class="empty-state" id="emptyState"><div class="big">🐝</div><h3>Nouveau chat</h3><p>Choisis un mode et envoie un message. En <strong>Swarm</strong>, Kimi lance des sous-agents parallèles.</p></div>
+  </div>
+  <div class="input-area">
+    <div class="input-row">
+      <textarea id="userInput" placeholder="Écris ton message..." rows="1" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
     </div>
-    <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
-  </div>
-  <div class="token-info">
-    <span id="tokenCount">Tokens cette session : 0</span>
-    <span id="costEstimate">Coût estimé : ~$0.000</span>
+    <div class="token-info"><span id="tokenCount">Tokens : 0</span><span id="costEstimate">~$0.000</span></div>
   </div>
 </div>
-
-<!-- Settings modal -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
-    <h2>Configuration</h2>
-    <div class="field">
-      <label>Clé API Moonshot</label>
-      <input type="password" id="apiKeyInput" placeholder="sk-..." />
-    </div>
-    <div class="field">
-      <label>Endpoint</label>
-      <input type="text" id="endpointInput" value="https://api.moonshot.ai/v1" />
-    </div>
-    <div class="field">
-      <label>Modèle</label>
-      <input type="text" id="modelInput" value="kimi-k2.6" />
-    </div>
+    <h2>⚙ Configuration</h2>
+    <div class="field"><label>Clé API Moonshot</label><input type="password" id="apiKeyInput" placeholder="sk-..." /></div>
+    <div class="field"><label>Endpoint</label><input type="text" id="endpointInput" value="https://api.moonshot.ai/v1" /></div>
+    <div class="field"><label>Modèle</label><input type="text" id="modelInput" value="kimi-k2.6" /></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeSettings()">Annuler</button>
       <button class="btn btn-primary" onclick="saveSettings()">Sauvegarder</button>
     </div>
   </div>
 </div>
-
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)" />
 <script>
-  // State
-  let currentMode = 'instant';
-  let messages = [];
-  let totalTokens = 0;
-  let isLoading = false;
+let currentMode='instant',currentMessages=[],currentChatId=null,totalTokens=0,totalCost=0,isLoading=false,allChats={};
+const ST={instant:['Génération...'],thinking:['Réflexion profonde...','Analyse du problème...','Construction du raisonnement...','Vérification...'],agent:['Lancement agent...','Recherche...','Analyse...','Synthèse...'],agent_swarm:['Décomposition...','Lancement sous-agents...','Agents en parallèle...','Coordination...','Assemblage final...']};
+const IC={instant:'⚡',thinking:'🧠',agent:'🔧',agent_swarm:'🐝'},LB={instant:'Instant',thinking:'Thinking',agent:'Agent',agent_swarm:'Swarm'};
 
-  const modeDescriptions = {
-    instant: 'Réponses rapides — idéal pour les questions simples et le chat.',
-    thinking: 'Raisonnement profond avec chaîne de pensée — pour les problèmes complexes.',
-    agent: 'Mode agent avec recherche et outils — pour la recherche et la création.',
-    agent_swarm: 'Jusqu\'à 300 sous-agents parallèles — pour les tâches massives (coding, recherche, sites web).'
-  };
+function loadChats(){try{allChats=JSON.parse(localStorage.getItem('kimi_chats')||'{}')}catch{allChats={}}}
+function saveChats(){localStorage.setItem('kimi_chats',JSON.stringify(allChats))}
+function saveCurrentChat(){if(!currentChatId)return;allChats[currentChatId].messages=currentMessages;allChats[currentChatId].mode=currentMode;allChats[currentChatId].tokens=totalTokens;allChats[currentChatId].cost=totalCost;allChats[currentChatId].updatedAt=Date.now();saveChats();renderChatList()}
 
-  // Mode selector
-  function setMode(mode) {
-    currentMode = mode;
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.mode === mode);
-    });
-    document.getElementById('modeDesc').textContent = modeDescriptions[mode];
-  }
+function renderChatList(filter){
+  const c=document.getElementById('chatList'),sorted=Object.entries(allChats).sort((a,b)=>(b[1].updatedAt||0)-(a[1].updatedAt||0));
+  const now=Date.now(),day=864e5,g={today:[],yesterday:[],week:[],older:[]};
+  sorted.forEach(([id,ch])=>{if(filter&&!ch.title.toLowerCase().includes(filter.toLowerCase()))return;const age=now-(ch.updatedAt||ch.createdAt);if(age<day)g.today.push([id,ch]);else if(age<2*day)g.yesterday.push([id,ch]);else if(age<7*day)g.week.push([id,ch]);else g.older.push([id,ch])});
+  let h='';const rg=(label,items)=>{if(!items.length)return'';let s='<div class="chat-list-group"><div class="chat-list-label">'+label+'</div>';items.forEach(([id,ch])=>{const icon=IC[ch.mode]||'💬',act=id===currentChatId?' active':'';s+='<div class="chat-item'+act+'" onclick="loadChat(\''+id+'\')"><span class="chat-item-icon">'+icon+'</span><div class="chat-item-content"><div class="chat-item-title">'+escapeHtml(ch.title)+'</div><div class="chat-item-date">'+fmtDate(ch.updatedAt||ch.createdAt)+'</div></div><button class="chat-item-delete" onclick="event.stopPropagation();deleteChat(\''+id+'\')" title="Supprimer">×</button></div>'});return s+'</div>'};
+  h+=rg("Aujourd'hui",g.today);h+=rg('Hier',g.yesterday);h+=rg('Cette semaine',g.week);h+=rg('Plus ancien',g.older);
+  c.innerHTML=h||'<div style="padding:20px;text-align:center;color:var(--text-dim);font-size:12px">Aucun chat</div>';
+}
+function filterChats(q){renderChatList(q)}
+function fmtDate(ts){const d=new Date(ts),n=new Date();if(d.toDateString()===n.toDateString())return d.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});return d.toLocaleDateString('fr-CA',{day:'numeric',month:'short'})}
 
-  // Settings
-  function openSettings() {
-    const key = localStorage.getItem('kimi_api_key') || '';
-    const endpoint = localStorage.getItem('kimi_endpoint') || 'https://api.moonshot.ai/v1';
-    const model = localStorage.getItem('kimi_model') || 'kimi-k2.6';
-    document.getElementById('apiKeyInput').value = key;
-    document.getElementById('endpointInput').value = endpoint;
-    document.getElementById('modelInput').value = model;
-    document.getElementById('settingsModal').classList.add('open');
-  }
+function newChat(){if(currentChatId&&currentMessages.length)saveCurrentChat();currentChatId='chat_'+Date.now();currentMessages=[];totalTokens=0;totalCost=0;allChats[currentChatId]={title:'Nouveau chat',messages:[],mode:currentMode,tokens:0,cost:0,createdAt:Date.now(),updatedAt:Date.now()};saveChats();renderChatArea();renderChatList();updateCounters();document.getElementById('userInput').focus();closeSidebarMobile()}
+function loadChat(id){if(currentChatId&&currentMessages.length)saveCurrentChat();currentChatId=id;const ch=allChats[id];currentMessages=ch.messages||[];currentMode=ch.mode||'instant';totalTokens=ch.tokens||0;totalCost=ch.cost||0;setMode(currentMode);renderChatArea();renderChatList();updateCounters();closeSidebarMobile()}
+function deleteChat(id){delete allChats[id];saveChats();if(id===currentChatId)newChat();else renderChatList()}
+function deleteAllChats(){if(!confirm('Supprimer tous les chats ?'))return;allChats={};saveChats();newChat()}
+function exportChats(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(allChats,null,2)],{type:'application/json'}));a.download='kimi-chats-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
+function importChats(){document.getElementById('importFile').click()}
+function handleImport(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{Object.assign(allChats,JSON.parse(r.result));saveChats();renderChatList()}catch{alert('Fichier invalide')}};r.readAsText(f);e.target.value=''}
 
-  function closeSettings() {
-    document.getElementById('settingsModal').classList.remove('open');
-  }
+function renderChatArea(){const a=document.getElementById('chatArea');if(!currentMessages.length){a.innerHTML='<div class="empty-state" id="emptyState"><div class="big">🐝</div><h3>Nouveau chat</h3><p>Choisis un mode et envoie un message.</p></div>';return}a.innerHTML='';currentMessages.forEach(m=>{if(m.role==='user'||m.role==='assistant')appendMsg(m.role,m.content,m.reasoning)});a.scrollTop=a.scrollHeight}
 
-  function saveSettings() {
-    const key = document.getElementById('apiKeyInput').value.trim();
-    const endpoint = document.getElementById('endpointInput').value.trim();
-    const model = document.getElementById('modelInput').value.trim();
-    if (key) localStorage.setItem('kimi_api_key', key);
-    if (endpoint) localStorage.setItem('kimi_endpoint', endpoint);
-    if (model) localStorage.setItem('kimi_model', model);
-    closeSettings();
-  }
+function appendMsg(role,content,reasoning){
+  const a=document.getElementById('chatArea'),es=document.getElementById('emptyState');if(es)es.remove();
+  const div=document.createElement('div');div.className='message '+role;
+  const mid='m_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+  let h='<div class="msg-label">'+(role==='user'?'Toi':'Kimi · '+LB[currentMode])+'</div>';
+  if(reasoning){const rid='r_'+mid;h+='<div class="reasoning-box"><div class="reasoning-toggle" onclick="toggleR(\''+rid+'\')">🧠 Raisonnement ▸</div><div class="reasoning-content" id="'+rid+'"><div class="reasoning-content-inner">'+escapeHtml(reasoning)+'</div></div></div>'}
+  const parsed=role==='assistant'?parseCB(content):escapeHtml(content);
+  const n=(content.match(/```\w*\n[\s\S]*?```/g)||[]).length;
+  let dl='';if(role==='assistant'&&n>1)dl='<div style="margin-top:8px"><button class="code-action-btn" onclick="dlAll(\''+mid+'\')" style="font-size:11px;padding:5px 12px">⬇ Tout télécharger ('+n+')</button></div>';
+  h+='<div class="msg-body" id="'+mid+'">'+parsed+dl+'</div>';
+  div.innerHTML=h;a.appendChild(div);a.scrollTop=a.scrollHeight;
+}
+function updateCounters(){document.getElementById('tokenCount').textContent='Tokens : '+totalTokens.toLocaleString();document.getElementById('costEstimate').textContent='~$'+totalCost.toFixed(4)}
 
-  // Chat
-  function addMessage(role, content, reasoning) {
-    const chatArea = document.getElementById('chatArea');
-    const emptyState = document.getElementById('emptyState');
-    if (emptyState) emptyState.remove();
+function setMode(mode){currentMode=mode;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const bg=document.getElementById('modeBadge');bg.className='mode-badge '+mode;bg.textContent=IC[mode]+' '+LB[mode]}
 
-    const div = document.createElement('div');
-    div.className = `message ${role}`;
+let sIv;
+function showStatus(){document.getElementById('statusBar').classList.add('visible');let i=0;const m=ST[currentMode];document.getElementById('statusText').textContent=m[0];sIv=setInterval(()=>{i=(i+1)%m.length;document.getElementById('statusText').textContent=m[i]},2500)}
+function hideStatus(){clearInterval(sIv);document.getElementById('statusBar').classList.remove('visible')}
 
-    let html = `<div class="message-label">${role === 'user' ? 'Toi' : 'Kimi K2.6'}</div>`;
+function openSettings(){document.getElementById('apiKeyInput').value=localStorage.getItem('kimi_api_key')||'';document.getElementById('endpointInput').value=localStorage.getItem('kimi_endpoint')||'https://api.moonshot.ai/v1';document.getElementById('modelInput').value=localStorage.getItem('kimi_model')||'kimi-k2.6';document.getElementById('settingsModal').classList.add('open')}
+function closeSettings(){document.getElementById('settingsModal').classList.remove('open')}
+function saveSettings(){const k=document.getElementById('apiKeyInput').value.trim(),e=document.getElementById('endpointInput').value.trim(),m=document.getElementById('modelInput').value.trim();if(k)localStorage.setItem('kimi_api_key',k);if(e)localStorage.setItem('kimi_endpoint',e);if(m)localStorage.setItem('kimi_model',m);closeSettings()}
 
-    if (reasoning) {
-      const id = 'r' + Date.now();
-      html += `<div class="reasoning-toggle" onclick="toggleReasoning('${id}')">▸ Raisonnement</div>`;
-      html += `<div class="reasoning collapsed" id="${id}">${escapeHtml(reasoning)}</div>`;
-    }
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open')}
+function closeSidebarMobile(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open')}
 
-    html += `<div class="message-body">${formatContent(content)}</div>`;
-    div.innerHTML = html;
-    chatArea.appendChild(div);
-    chatArea.scrollTop = chatArea.scrollHeight;
-  }
+function parseCB(text){const rx=/```(\w*)\n([\s\S]*?)```/g;let res='',last=0,bid=0,m;while((m=rx.exec(text))!==null){res+=escapeHtml(text.slice(last,m.index));const lang=m[1]||'txt',code=m[2],id='cb_'+Date.now()+'_'+bid++,ext=l2e(lang),fn=gFn(code,lang,ext);res+='<div class="code-block"><div class="code-header"><span class="code-lang">'+lang.toUpperCase()+'</span><div class="code-actions"><button class="code-action-btn" onclick="cpC(\''+id+'\')">Copier</button><button class="code-action-btn" onclick="dlC(\''+id+'\',\''+fn+'\')">⬇ '+fn+'</button></div></div><pre id="'+id+'">'+escapeHtml(code)+'</pre></div>';last=m.index+m[0].length}res+=escapeHtml(text.slice(last));return res.replace(/`([^`]+)`/g,'<code>$1</code>')}
+function l2e(l){const m={javascript:'js',js:'js',typescript:'ts',ts:'ts',python:'py',py:'py',html:'html',css:'css',java:'java',cpp:'cpp',c:'c',rust:'rs',go:'go',ruby:'rb',php:'php',swift:'swift',kotlin:'kt',sql:'sql',bash:'sh',shell:'sh',sh:'sh',json:'json',yaml:'yaml',yml:'yml',xml:'xml',markdown:'md',md:'md',jsx:'jsx',tsx:'tsx',vue:'vue',svelte:'svelte',scss:'scss',csharp:'cs',cs:'cs',vba:'bas',r:'r',matlab:'m',lua:'lua',dart:'dart'};return m[l.toLowerCase()]||l||'txt'}
+function gFn(code,lang,ext){for(const p of[/(?:\/\/|#|<!--)\s*(?:file(?:name)?|File):\s*(\S+)/i,/(?:save as)\s+[`"']?(\S+?)[`"']?\s/i]){const m=code.match(p);if(m)return m[1]}if(['jsx','tsx','vue','svelte'].includes(ext)){const m=code.match(/(?:function|const|class)\s+([A-Z]\w+)/);if(m)return m[1]+'.'+ext}if(code.includes('<!DOCTYPE')||code.includes('<html'))return'index.html';if(code.includes('def ')&&ext==='py')return'main.py';return'code.'+ext}
+function cpC(id){navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>{const b=document.getElementById(id).closest('.code-block').querySelector('.code-action-btn');b.textContent='✓ Copié';b.classList.add('ok');setTimeout(()=>{b.textContent='Copier';b.classList.remove('ok')},2e3)})}
+function dlC(id,fn){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([document.getElementById(id).textContent],{type:'text/plain'}));a.download=fn;a.click();URL.revokeObjectURL(a.href);const b=document.getElementById(id).closest('.code-block').querySelector('.code-action-btn:last-child');const o=b.textContent;b.textContent='✓';b.classList.add('ok');setTimeout(()=>{b.textContent=o;b.classList.remove('ok')},2e3)}
+function dlAll(mid){document.getElementById(mid).querySelectorAll('.code-block').forEach(bl=>{const pre=bl.querySelector('pre'),btn=bl.querySelector('.code-action-btn:last-child'),fn=btn.textContent.replace('⬇ ','');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([pre.textContent],{type:'text/plain'}));a.download=fn;a.click();URL.revokeObjectURL(a.href)})}
+function toggleR(id){const el=document.getElementById(id),t=el.previousElementSibling;el.classList.toggle('open');t.textContent=el.classList.contains('open')?'🧠 Raisonnement ▾':'🧠 Raisonnement ▸'}
+function escapeHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
 
-  function toggleReasoning(id) {
-    const el = document.getElementById(id);
-    const toggle = el.previousElementSibling;
-    el.classList.toggle('collapsed');
-    toggle.textContent = el.classList.contains('collapsed') ? '▸ Raisonnement' : '▾ Raisonnement';
-  }
+async function sendMessage(){
+  const input=document.getElementById('userInput'),text=input.value.trim();
+  if(!text||isLoading)return;
+  const apiKey=localStorage.getItem('kimi_api_key');if(!apiKey){openSettings();return}
+  if(!currentChatId)newChat();
+  isLoading=true;document.getElementById('sendBtn').disabled=true;input.value='';input.style.height='auto';
+  appendMsg('user',text);currentMessages.push({role:'user',content:text});
+  if(currentMessages.filter(m=>m.role==='user').length===1){allChats[currentChatId].title=text.slice(0,60)+(text.length>60?'...':'');renderChatList()}
+  showStatus();
+  try{
+    const endpoint=localStorage.getItem('kimi_endpoint')||'https://api.moonshot.ai/v1',model=localStorage.getItem('kimi_model')||'kimi-k2.6';
+    const apiMsgs=currentMessages.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content}));
+    const body={model,messages:apiMsgs};
+    if(['thinking','agent','agent_swarm'].includes(currentMode))body.chat_template_kwargs={thinking:true};
+    if(currentMode==='agent_swarm')body.messages=[{role:'system',content:'You are operating in Agent Swarm mode. For every complex task:\n1. Decompose it into parallel subtasks\n2. Spawn specialized sub-agents for each\n3. Execute all subtasks simultaneously\n4. Coordinate and merge all outputs into a complete, production-ready result\n5. Always output complete, downloadable files — not snippets\nMaximize parallelism. Always provide COMPLETE code files ready to save and run.'},...apiMsgs];
+    else if(currentMode==='agent')body.messages=[{role:'system',content:'You are in Agent mode. Think step by step, use tools when needed, and provide complete, ready-to-use outputs. Always output full files, not snippets.'},...apiMsgs];
+    const resp=await fetch(endpoint+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify(body)});
+    const data=await resp.json();hideStatus();
+    if(data.error){appendMsg('assistant','❌ Erreur : '+data.error.message)}
+    else{const ch=data.choices[0],content=ch.message.content,reasoning=ch.message.reasoning_content||null;appendMsg('assistant',content,reasoning);currentMessages.push({role:'assistant',content,reasoning});if(data.usage){totalTokens+=data.usage.total_tokens;totalCost+=(data.usage.prompt_tokens||0)*.6/1e6+(data.usage.completion_tokens||0)*2.5/1e6;updateCounters()}}
+  }catch(err){hideStatus();appendMsg('assistant','❌ Erreur réseau : '+err.message)}
+  saveCurrentChat();isLoading=false;document.getElementById('sendBtn').disabled=false;input.focus();
+}
 
-  function showTyping() {
-    const chatArea = document.getElementById('chatArea');
-    const div = document.createElement('div');
-    div.className = 'message assistant';
-    div.id = 'typingIndicator';
-    div.innerHTML = `
-      <div class="message-label">Kimi K2.6 — ${currentMode}</div>
-      <div class="typing">
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-      </div>`;
-    chatArea.appendChild(div);
-    chatArea.scrollTop = chatArea.scrollHeight;
-  }
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,160)+'px'}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}}
 
-  function removeTyping() {
-    const el = document.getElementById('typingIndicator');
-    if (el) el.remove();
-  }
-
-  function formatContent(text) {
-    let escaped = escapeHtml(text);
-    // Simple code block formatting
-    escaped = escaped.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre>$2</pre>');
-    escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
-    return escaped;
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  async function sendMessage() {
-    const input = document.getElementById('userInput');
-    const text = input.value.trim();
-    if (!text || isLoading) return;
-
-    const apiKey = localStorage.getItem('kimi_api_key');
-    if (!apiKey) {
-      openSettings();
-      return;
-    }
-
-    isLoading = true;
-    document.getElementById('sendBtn').disabled = true;
-    input.value = '';
-    input.style.height = 'auto';
-
-    addMessage('user', text);
-    messages.push({ role: 'user', content: text });
-
-    showTyping();
-
-    try {
-      const endpoint = localStorage.getItem('kimi_endpoint') || 'https://api.moonshot.ai/v1';
-      const model = localStorage.getItem('kimi_model') || 'kimi-k2.6';
-
-      const body = {
-        model: model,
-        messages: messages
-      };
-
-      // Add mode-specific parameters
-      if (currentMode === 'thinking') {
-        body.chat_template_kwargs = { thinking: true };
-      } else if (currentMode === 'agent' || currentMode === 'agent_swarm') {
-        // Agent modes — the orchestration is triggered by prompt structure
-        // and the model's built-in agent capabilities
-        body.chat_template_kwargs = { thinking: true };
-        if (currentMode === 'agent_swarm') {
-          // Prepend swarm instruction to system message
-          const swarmInstruction = {
-            role: 'system',
-            content: 'You are operating in Agent Swarm mode. Decompose complex tasks into parallel subtasks. Spawn specialized sub-agents for each subtask. Coordinate their outputs into a unified, comprehensive result. Maximize parallelism and thoroughness.'
-          };
-          body.messages = [swarmInstruction, ...messages];
-        }
-      }
-
-      const resp = await fetch(`${endpoint}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await resp.json();
-
-      removeTyping();
-
-      if (data.error) {
-        addMessage('assistant', '❌ Erreur : ' + data.error.message);
-      } else {
-        const choice = data.choices[0];
-        const content = choice.message.content;
-        const reasoning = choice.message.reasoning_content || null;
-
-        addMessage('assistant', content, reasoning);
-        messages.push({ role: 'assistant', content: content });
-
-        // Update token count
-        if (data.usage) {
-          totalTokens += data.usage.total_tokens;
-          document.getElementById('tokenCount').textContent =
-            `Tokens cette session : ${totalTokens.toLocaleString()}`;
-          const cost = (data.usage.prompt_tokens * 0.60 / 1e6) +
-                       (data.usage.completion_tokens * 2.50 / 1e6);
-          const totalCost = (totalTokens * 1.5 / 1e6); // rough average
-          document.getElementById('costEstimate').textContent =
-            `Coût estimé : ~$${totalCost.toFixed(4)}`;
-        }
-      }
-    } catch (err) {
-      removeTyping();
-      addMessage('assistant', '❌ Erreur réseau : ' + err.message);
-    }
-
-    isLoading = false;
-    document.getElementById('sendBtn').disabled = false;
-    input.focus();
-  }
-
-  // Input handling
-  function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-  }
-
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
-  // On load — prompt for API key if not set
-  window.addEventListener('load', () => {
-    if (!localStorage.getItem('kimi_api_key')) {
-      openSettings();
-    }
-    document.getElementById('userInput').focus();
-  });
+window.addEventListener('load',()=>{loadChats();const ids=Object.keys(allChats).sort((a,b)=>(allChats[b].updatedAt||0)-(allChats[a].updatedAt||0));if(ids.length)loadChat(ids[0]);else newChat();if(!localStorage.getItem('kimi_api_key'))openSettings();document.getElementById('userInput').focus()});
 </script>
 </body>
 </html>
